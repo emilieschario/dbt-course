@@ -227,5 +227,3 @@ The following links will be useful for these exercises:
 * [dbt Docs: Sources](https://docs.getdbt.com/docs/building-a-dbt-project/using-sources/)
 * [dbt Docs: Documenting Models and Sources](https://docs.getdbt.com/docs/building-a-dbt-project/documentation/)
 * [Slides from presentation](https://docs.google.com/presentation/d/1U7gxRwIEM5RC6r-v4UPBv-fqKI4tgBSfCAhku5Iqndw/edit?usp=sharing)
-
-Click on the links below for step-by-step guides to each section above.

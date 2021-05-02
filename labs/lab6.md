@@ -18,9 +18,29 @@ Create a staging model for the new payments data that includes the following fie
 * payment_amount
 * created_at
 
-Things to think about: 
+Things to think about:
 * Does our new model need tests?
 * Does every column have the correct datatype?
+
+<details>
+  <summary>👉 Section 1</summary>
+
+  (1) Add a new source for the Stripe data.
+
+  (2) Create a new file `stg_stripe__payments.sql` in our `models/` directory.
+
+  (3) Pull out the necessary columns from the JSON. Write a query around the following column definitions:
+  ```sql
+    json_data:order_id as order_id,
+    json_data:id as payment_id,
+    json_data:method as payment_type,
+    json_data:amount::int / 100.0 as payment_amount,
+    json_data:created_at::timestamp as created_at
+  ```
+
+  (4) Execute `dbt run -m stg_stripe__payments` to make sure everything is working correctly.
+
+</details>
 
 ### 2. Write a query that provides a record for each zipcode
 
@@ -29,6 +49,49 @@ As part of the payments data work, we also received a dataset with information a
 Write a query, using a `lateral flatten`, that contains a record for each zipcode in our new dataset.
 
 The data for this exercise can be found at `raw.geo.countries`.
+
+<details>
+  <summary>👉 Section 2</summary>
+
+  (1) In a new SQL query, inspect the format of the table by running `select * from raw.geo.countries`.
+
+  (2) Let's 'unnest' the `states` array by adding a `lateral flatten` to the query:
+  ```sql
+    select
+        country,
+        s.value:state as state,
+        s.value:zipcodes as zipcodes
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+  ```
+  We now have a record for each state, which we can see has another array in it called `zipcodes`.
+
+  (3) Let's 'unnest' the `zipcodes` array by adding another `lateral flatten`:
+  ```sql
+    select
+        country,
+        s.value:state as state,
+        c.value:zipcode as zipcode,
+        c.value:city as city
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+    left join lateral flatten (input => s.value:zipcodes) as c
+  ```
+
+  (4) It looks like some of our columns aren't coming through as the correct data type. Let's cast them to strings:
+  ```sql
+    select
+        country,
+        s.value:state::varchar as state,
+        c.value:zipcode::varchar as zipcode,
+        c.value:city::varchar as city
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+    left join lateral flatten (input => s.value:zipcodes) as c
+  ```
+  We should now have a complete query.
+
+</details>
 
 ### 3. Add a new column to our `orders` model that represents how many times an order has been re-ordered
 
@@ -50,79 +113,6 @@ Order 3 had no downstream orders.
 Order 4 generated 1 downstream order. It generated order 5, for a total of 1 (5).
 Order 5 had no downstream orders.
 
-## Links and Walkthrough Guides
-
-The following links will be useful for these exercises:
-
-* [Snowflake Docs: Querying Semi-Structured Data](https://docs.snowflake.com/en/user-guide/querying-semistructured.html)
-* [dbt Docs: Recursive CTEs](https://docs.snowflake.com/en/user-guide/queries-cte.html/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1yUOK956ZZe_XBUp-4NdWNTYoEQUUpipbwGTsyNWgcLQ/edit#slide=id.ga276914d86_0_5)
-
-Click on the links below for step-by-step guides to each section above.
-
-<details>
-  <summary>👉 Section 1</summary>
-  
-  (1) Add a new source for the Stripe data.
-
-  (2) Create a new file `stg_stripe__payments.sql` in our `models/` directory.
-
-  (3) Pull out the necessary columns from the JSON. Write a query around the following column definitions:
-  ```sql
-    json_data:order_id as order_id,
-    json_data:id as payment_id,
-    json_data:method as payment_type,
-    json_data:amount::int / 100.0 as payment_amount,
-    json_data:created_at::timestamp as created_at
-  ```
-
-  (4) Execute `dbt run -m stg_stripe__payments` to make sure everything is working correctly. 
-
-</details>
-
-<details>
-  <summary>👉 Section 2</summary>
-
-  (1) In a new SQL query, inspect the format of the table by running `select * from raw.geo.countries`.
-
-  (2) Let's 'unnest' the `states` array by adding a `lateral flatten` to the query:
-  ```sql
-    select 
-        country,
-        s.value:state as state,
-        s.value:zipcodes as zipcodes
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-  ```
-  We now have a record for each state, which we can see has another array in it called `zipcodes`.
-
-  (3) Let's 'unnest' the `zipcodes` array by adding another `lateral flatten`:
-  ```sql
-    select 
-        country,
-        s.value:state as state,
-        c.value:zipcode as zipcode,
-        c.value:city as city
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-    left join lateral flatten (input => s.value:zipcodes) as c
-  ```
-
-  (4) It looks like some of our columns aren't coming through as the correct data type. Let's cast them to strings:
-  ```sql
-    select 
-        country,
-        s.value:state::varchar as state,
-        c.value:zipcode::varchar as zipcode,
-        c.value:city::varchar as city
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-    left join lateral flatten (input => s.value:zipcodes) as c
-  ```
-  We should now have a complete query.
-
-</details>
-
 <details>
   <summary>👉 Section 3</summary>
 
@@ -134,24 +124,24 @@ Click on the links below for step-by-step guides to each section above.
     from {{ ref('stg_ecomm__orders') }}
     where reordered_from_id is not null
   ```
-  This gives us a column for wherer an order originated, and a column for the orders that it directly created. 
+  This gives us a column for wherer an order originated, and a column for the orders that it directly created.
 
-  (2) The 'recursive' part of the CTE then needs to replace the second column with any orders that the initial re-order created. We then get something like: 
+  (2) The 'recursive' part of the CTE then needs to replace the second column with any orders that the initial re-order created. We then get something like:
   ```sql
     with recursive reorders as (
 
         select reordered_from_id as order_id, order_id as reorder_id
         from {{ ref('stg_ecomm__orders') }}
         where reordered_from_id is not null
-        
+
         union all
-    
+
         select reorders.order_id, orders.order_id as reorder_id
         from reorders
         left join {{ ref('stg_ecomm__orders') }} as orders
             on reorders.reorder_id = orders.reordered_from_id
         where orders.order_id is not null
-        
+
     )
 
     select *
@@ -166,3 +156,11 @@ Click on the links below for step-by-step guides to each section above.
     group by 1
   ```
 </details>
+
+## Links and Walkthrough Guides
+
+The following links will be useful for these exercises:
+
+* [Snowflake Docs: Querying Semi-Structured Data](https://docs.snowflake.com/en/user-guide/querying-semistructured.html)
+* [dbt Docs: Recursive CTEs](https://docs.snowflake.com/en/user-guide/queries-cte.html/)
+* [Slides from presentation](https://docs.google.com/presentation/d/1yUOK956ZZe_XBUp-4NdWNTYoEQUUpipbwGTsyNWgcLQ/edit#slide=id.ga276914d86_0_5)
