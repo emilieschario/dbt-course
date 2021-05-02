@@ -1,109 +1,208 @@
-## Lab 4. CTEs, Subqueries, and Query Optimization
+## Lab 4: Window Functions, Calendar Spines, and Semi-Structured Data
 
-### 1. Re-write the query using CTEs
+### 1. Add a `days_since_last_order` column to the `orders` model.
 
-You received a query from a collague in the marketing department who was trying to pull some information from your warehouse. Unfortunately, they exclusively used subqueries and you want to clean it up before providing your feedback because you think it will be easier to read.
+It's useful for analysis to know how many days had passed between an order and the prior order (for a given customer).
 
-Create a new file for the following query and re-write it using CTEs instead of subqueries.
+Using a window function, add a column `days_since_last_order` to the `orders` model.
 
-```sql
-select
-    customer_id,
-    first_name,
-    last_name,
-    (select round(avg(total_amount),2) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as avg_order_amount,
-    (select count(*) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as order_count
-from {{ ref('customers') }}
-where customer_id in (
-  select distinct customer_id
-  from {{ ref('orders') }}
-  where ordered_at > current_date - 42
-)
-```
 <details>
   <summary>👉 Section 1</summary>
 
-  (1) Create a file in the `models/` directory called `rpt_7_week_active_customers.sql` and put the query above in it.
-  (2) There are two bits that we feel we could re-factor into CTEs. The first is the subquery in the `where` clause. We can also join it instead of doing a `where customer_id in`. We can pull this out so that our file looks as follows:
+  (1) To calculate `days_since_last_order` we need to add the following SQL (or similar depending on what you've named columns) to our `orders` model. It finds the prior order for a customer and calculates the difference in days between the two `ordered_at` values:
   ```sql
-  with seven_weeks as (
-
-    select distinct customer_id
-    from {{ ref('orders') }}
-    where ordered_at > current_date - 42
-
-  )
-
-  select
-      customer_id,
-      first_name,
-      last_name,
-      (select round(avg(total_amount),2) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as avg_order_amount,
-      (select count(*) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as order_count
-  from {{ ref('customers') }}
-  inner join seven_weeks
-    using (customer_id)
+    datediff('day', lag(ordered_at) over (partition by customer_id order by ordered_at), ordered_at)
   ```
-  (3) The second section we can pull out is the two metric columns that are calculated with subqueries. These can be done an aggregate and a join. It would leave our file as follows:
-  ```sql
-  with seven_weeks as (
-
-    select distinct customer_id
-    from {{ ref('orders') }}
-    where ordered_at > current_date - 42
-
-  ), half_year as (
-
-    select
-        customer_id,
-        round(avg(total_amount),2) as avg_order_amount,
-        count(*) as order_count
-    from {{ ref('orders') }}
-    where ordered_at > current_date - 180
-    group by 1
-
-  )
-
-  select
-      customers.customer_id,
-      customers.first_name,
-      customers.last_name,
-      half_year.avg_order_amount,
-      half_year.order_count
-  from {{ ref('customers') }}
-  left join half_year
-    using (customer_id)
-  inner join seven_weeks
-    using (customer_id)
-  ```
-  (3) Execute `dbt run -m +rpt_7_week_active_customers` to make sure your model runs successfully.
+  (2) Execute `dbt run -m order` to make sure your model runs successfully.
 </details>
 
-### 2. Break out the query into ephemeral models.
+### 2. Filter out employees from the orders and customers models
 
-After reviewing the query, you think it would be useful to add it to your dbt project. However, you think part of the query is going to be re-usable elsewhere and want to break it up.
+Employees get a discount from our ecommerce shop. While we're very happy for them to have that discount, we want to filter out all of their records from the warehouse.
 
-Move part of the query into another model. You won't want the new model to appear in the warehouse, so set it to be materialized as ephemeral.
+If you haven't already, create a staging model for the customers data. In the staging model, filter out all emails for the domains `ecommerce.com`, `ecommerce.co.uk`, `ecommerce.ca`.
 
-Things to think about:
-* What section of the query is most suitable to be split out?
-* Are there any tests you should apply to the new ephemeral model?
+That filter should fix the customers data, but we still need to add a filter to the `orders` model. Filter out any employee orders.
 
 <details>
   <summary>👉 Section 2</summary>
 
-  (1) Create two new `.sql` files for the CTEs and move the SQL from the CTEs across into them.
+  (1) As discussed in the session, there are a number of different ways we could do this filter. In this instance we'll use an `ilike`. Add the following filter to your customers model:
+  ```sql
+    where email not ilike '%ecommerce.com'
+      and email not ilike '%ecommerce.ca'
+      and email not ilike '%ecommerce.co.uk'
+  ```
+  (2) Add the same filter to your `orders` model. Note that the `email` column isn't likely to already be there so you might need to join it in.
+  (3) Execute `dbt run` to make sure your filters work.
+</details>
 
-  (2) Re-factor the initial file by replacing the code in the CTEs with `select *` queries from the new models.
+### 3. Create a staging model for the payments data
 
-  (3) Add a config to the two new models so that they get `materialized` as `ephemeral`.
+We've recently integrated our payments data into Snowflake. The data comes as a JSON API response from the source system and we decided it would be easier to just put it in Snowflake in the same format.
 
-  (4) Execute `dbt run -m +rpt_7_week_active_customers` to make sure your model runs successfully.
+The table can be found at `raw.stripe.payments`.
+
+Create a staging model for the new payments data that includes the following fields:
+* order_id
+* payment_id
+* payment_type
+* payment_amount
+* created_at
+
+Things to think about:
+* Does our new model need tests?
+* Does every column have the correct datatype?
+
+<details>
+  <summary>👉 Section 3</summary>
+
+  (1) Add a new source for the Stripe data.
+
+  (2) Create a new file `stg_stripe__payments.sql` in our `models/` directory.
+
+  (3) Pull out the necessary columns from the JSON. Write a query around the following column definitions:
+  ```sql
+    json_data:order_id as order_id,
+    json_data:id as payment_id,
+    json_data:method as payment_type,
+    json_data:amount::int / 100.0 as payment_amount,
+    json_data:created_at::timestamp as created_at
+  ```
+
+  (4) Execute `dbt run -m stg_stripe__payments` to make sure everything is working correctly.
+
+</details>
+
+### 4. Write a query that provides a record for each zipcode
+
+As part of the payments data work, we also received a dataset with information about US zipcodes. Again, this data has been provided to us as a single JSON object and we want to unnest it so that each record contains a zipcode and relevant information about that zipcode.
+
+Write a query, using a `lateral flatten`, that contains a record for each zipcode in our new dataset.
+
+The data for this exercise can be found at `raw.geo.countries`.
+
+<details>
+  <summary>👉 Section 4</summary>
+
+  (1) In a new SQL query, inspect the format of the table by running `select * from raw.geo.countries`.
+
+  (2) Let's 'unnest' the `states` array by adding a `lateral flatten` to the query:
+  ```sql
+    select
+        country,
+        s.value:state as state,
+        s.value:zipcodes as zipcodes
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+  ```
+  We now have a record for each state, which we can see has another array in it called `zipcodes`.
+
+  (3) Let's 'unnest' the `zipcodes` array by adding another `lateral flatten`:
+  ```sql
+    select
+        country,
+        s.value:state as state,
+        c.value:zipcode as zipcode,
+        c.value:city as city
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+    left join lateral flatten (input => s.value:zipcodes) as c
+  ```
+
+  (4) It looks like some of our columns aren't coming through as the correct data type. Let's cast them to strings:
+  ```sql
+    select
+        country,
+        s.value:state::varchar as state,
+        c.value:zipcode::varchar as zipcode,
+        c.value:city::varchar as city
+    from raw.geo.countries
+    left join lateral flatten (input => states) as s
+    left join lateral flatten (input => s.value:zipcodes) as c
+  ```
+  We should now have a complete query.
+
+</details>
+
+### 5. Create a `customer__daily` model
+
+Because customers regularly change their addresses, our support team want to know what address a customer had in a system on a given day.
+
+First, create a calendar spine using the dbt-utils package.
+
+Then, create a model called `customer__daily` that uses our snapshot data and the calendar spine to have a record of what a customer looked like on each day since they were created.
+
+**N.B.**: For the purposes of this exercise, given we don't have our own snapshot data, please use the following table for the snapshot data: `analytics.snapshots_prod.customers_snapshot`.
+
+<details>
+  <summary>👉 Section 5</summary>
+
+  (1) Create a `packages.yml` file in the root directory of your project. Add the following code to it to add the `dbt_utils` package:
+  ```yaml
+  packages:
+    - package: fishtown-analytics/dbt_utils
+      version: 0.6.4
+  ```
+  Make sure you run `dbt deps` so that this package is imported into your project.
+
+  (2) Create a new model called `calendar.sql`. Add the following code to it to generate a calendar spine:
+  ```sql
+  {{ dbt_utils.date_spine(
+      datepart="day",
+      start_date="to_date('01/01/2020', 'mm/dd/yyyy')",
+      end_date="current_date"
+    )
+  }}
+  ```
+  (3) Create a new model called `customer__daily.sql`. Add the following SQL:
+  ```sql
+  with calendar as (
+
+      select *
+      from {{ ref('calendar') }}
+
+  ), customers as (
+
+      select *
+      from analytics.snapshots_prod.customers_snapshot
+
+  ), joined as (
+
+      select
+          calendar.date_day,
+          customers.*
+      from calendar
+      inner join customers
+          on calendar.date_day < coalesce(customers._dbt_valid_to, '2099-01-01')
+          and calendar.date_day >= customers._dbt_valid_from
+
+  )
+
+  select *
+  from joined
+  ```
+  (4) Execute `dbt run -m +customer__daily` to make sure your models run successfully.
+</details>
+
+### 6. Write a query that shows rolling 7-day order volumes
+
+You've had a request from the CEO to create a dashboard with the rolling 7-day order amounts. Because some days don't have orders, you think you'll need to use a calendar spine to create it.
+
+Write a query that shows the number of orders on a rolling 7-day basis.
+
+<details>
+  <summary>👉 Section 6</summary>
+
+  (1) Write a SQL query that joins our `orders` and `calendar` models. The join should work in a such a way that the prior 7 days of orders get joined to a given `date_day` in the `calendar` model. That way, you can then aggregate this joined query, grouping by the `date_day` column, in order to count how many orders there were on a rolling 7 day basis.
 </details>
 
 ## Links and Walkthrough Guides
 
 The following links will be useful for these exercises:
 
-* [dbt Docs: Ephemeral materialization](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations/#ephemeral)
-* [Slides from presentation](https://docs.google.com/presentation/d/1ULVXIWBOysH4R4KvkAMaqjAUMysf-Xe46Uowr5bsFZ0/edit#slide=id.g35f391192_00)
+* [Snowflake Docs: Functions](https://docs.snowflake.com/en/sql-reference/functions-all.html)
+* [Snowflake Docs: Window Functions](https://docs.snowflake.com/en/sql-reference/functions-analytic.html)
+* [Snowflake Docs: Querying Semi-Structured Data](https://docs.snowflake.com/en/user-guide/querying-semistructured.html)
+* [dbt Docs: Packages](https://docs.getdbt.com/docs/building-a-dbt-project/package-management/)
+* [Slides from presentation](https://docs.google.com/presentation/d/1rQSTCMA_YA625cvczL420iBG9nRc41sJ/edit#slide=id.p1)
