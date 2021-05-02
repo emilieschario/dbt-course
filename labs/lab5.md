@@ -1,208 +1,113 @@
-## Lab 5: Window Functions, Calendar Spines, and Semi-Structured Data
+## Lab 5: Snapshots and Seeds
 
-### 1. Add a `days_since_last_order` column to the `orders` model.
+### Kick-off discussion
 
-It's useful for analysis to know how many days had passed between an order and the prior order (for a given customer).
+* Are there any tables at USAA that would benefit from being snapshotted?
+* Are there any instances where having a snapshot table would have solved a problem at USAA?
+* Share some of your best `case when` horror stories.
+* Are there any at USAA that would benefit from a seed file?
 
-Using a window function, add a column `days_since_last_order` to the `orders` model.
+### 1. Snapshot the customers table
+
+Our application doesn't keep track of changes to any of the tables. When a record is updated, the prior state is lost as far as the application is concerned. From an analytics point of view, the full history would be really beneficial.
+
+Set up a snapshot model on the `customers` source table (not the model).
+
+Things to think about:
+* What type of snapshot strategy is best for this table?
+* What database and schema should it get built in?
 
 <details>
   <summary>👉 Section 1</summary>
 
-  (1) To calculate `days_since_last_order` we need to add the following SQL (or similar depending on what you've named columns) to our `orders` model. It finds the prior order for a customer and calculates the difference in days between the two `ordered_at` values:
+  (1) Create a file in the `snapshots/` directory called `customers_snapshot.sql` that contains the following code:
   ```sql
-    datediff('day', lag(ordered_at) over (partition by customer_id order by ordered_at), ordered_at)
+    {% snapshot customers_snapshot %}
+
+    {{
+        config(
+        target_database='analytics',
+        target_schema='snapshots_initials',
+        unique_key='id',
+
+        strategy='check',
+        check_cols = 'all',
+        )
+    }}
+
+    select * from {{ source('ecomm', 'customers') }}
+
+    {% endsnapshot %}
   ```
-  (2) Execute `dbt run -m order` to make sure your model runs successfully.
+  (2) Execute `dbt snapshot` in the console at the bottom of your screen to make sure your snapshot run correctly.
 </details>
 
-### 2. Filter out employees from the orders and customers models
+### 2. Snapshot the orders table
 
-Employees get a discount from our ecommerce shop. While we're very happy for them to have that discount, we want to filter out all of their records from the warehouse.
+Similarly, we want a snapshot of the `orders` source table. Set another snapshot up for that table.
 
-If you haven't already, create a staging model for the customers data. In the staging model, filter out all emails for the domains `ecommerce.com`, `ecommerce.co.uk`, `ecommerce.ca`.
-
-That filter should fix the customers data, but we still need to add a filter to the `orders` model. Filter out any employee orders.
+Things to think about:
+* What type of snapshot strategy is best for this table?
+* Should this snapshot get built in the same database and schema as the other snapshot?
 
 <details>
   <summary>👉 Section 2</summary>
 
-  (1) As discussed in the session, there are a number of different ways we could do this filter. In this instance we'll use an `ilike`. Add the following filter to your customers model:
+  (1) Create a file in the `snapshots/` directory called `order_snapshot.sql` that contains the following code:
   ```sql
-    where email not ilike '%ecommerce.com'
-      and email not ilike '%ecommerce.ca'
-      and email not ilike '%ecommerce.co.uk'
+    {% snapshot orders_snapshot %}
+
+    {{
+        config(
+        target_database='analytics',
+        target_schema='snapshots_initials',
+        unique_key='id',
+
+        strategy='timestamp',
+        updated_at='_synced_at',
+        )
+    }}
+
+    select * from {{ source('ecomm', 'orders') }}
+
+    {% endsnapshot %}
   ```
-  (2) Add the same filter to your `orders` model. Note that the `email` column isn't likely to already be there so you might need to join it in.
-  (3) Execute `dbt run` to make sure your filters work.
+  (2) Execute `dbt snapshot` in the console at the bottom of your screen to make sure your snapshots run correctly.
 </details>
 
-### 3. Create a staging model for the payments data
+### 3. Add the stores seed file to our project
 
-We've recently integrated our payments data into Snowflake. The data comes as a JSON API response from the source system and we decided it would be easier to just put it in Snowflake in the same format.
+There's a `store_id` column on the `orders` table that we haven't leveraged yet. It looks like it _should_ join to a stores table, but it doesn't seem to exist in our application database.
 
-The table can be found at `raw.stripe.payments`.
+It turns out, the engineers haven't yet built that table.
 
-Create a staging model for the new payments data that includes the following fields:
-* order_id
-* payment_id
-* payment_type
-* payment_amount
-* created_at
+Create a seed file with the store IDs and names. Add a number column to our `orders` model called `store_name`.
 
-Things to think about:
-* Does our new model need tests?
-* Does every column have the correct datatype?
+The store mappings are as follows:
+
+* Store ID 1: New York
+* Store ID 2: Los Angeles
+* Store ID 3: Dallas
 
 <details>
   <summary>👉 Section 3</summary>
 
-  (1) Add a new source for the Stripe data.
-
-  (2) Create a new file `stg_stripe__payments.sql` in our `models/` directory.
-
-  (3) Pull out the necessary columns from the JSON. Write a query around the following column definitions:
-  ```sql
-    json_data:order_id as order_id,
-    json_data:id as payment_id,
-    json_data:method as payment_type,
-    json_data:amount::int / 100.0 as payment_amount,
-    json_data:created_at::timestamp as created_at
+  (1) Create a file in the `data/` directory called `stores_data.csv` that contains the following data:
+  ```csv
+    store_id,store_name
+    1,New York
+    2,London
+    3,Tokyo
   ```
-
-  (4) Execute `dbt run -m stg_stripe__payments` to make sure everything is working correctly.
-
-</details>
-
-### 4. Write a query that provides a record for each zipcode
-
-As part of the payments data work, we also received a dataset with information about US zipcodes. Again, this data has been provided to us as a single JSON object and we want to unnest it so that each record contains a zipcode and relevant information about that zipcode.
-
-Write a query, using a `lateral flatten`, that contains a record for each zipcode in our new dataset.
-
-The data for this exercise can be found at `raw.geo.countries`.
-
-<details>
-  <summary>👉 Section 4</summary>
-
-  (1) In a new SQL query, inspect the format of the table by running `select * from raw.geo.countries`.
-
-  (2) Let's 'unnest' the `states` array by adding a `lateral flatten` to the query:
-  ```sql
-    select
-        country,
-        s.value:state as state,
-        s.value:zipcodes as zipcodes
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-  ```
-  We now have a record for each state, which we can see has another array in it called `zipcodes`.
-
-  (3) Let's 'unnest' the `zipcodes` array by adding another `lateral flatten`:
-  ```sql
-    select
-        country,
-        s.value:state as state,
-        c.value:zipcode as zipcode,
-        c.value:city as city
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-    left join lateral flatten (input => s.value:zipcodes) as c
-  ```
-
-  (4) It looks like some of our columns aren't coming through as the correct data type. Let's cast them to strings:
-  ```sql
-    select
-        country,
-        s.value:state::varchar as state,
-        c.value:zipcode::varchar as zipcode,
-        c.value:city::varchar as city
-    from raw.geo.countries
-    left join lateral flatten (input => states) as s
-    left join lateral flatten (input => s.value:zipcodes) as c
-  ```
-  We should now have a complete query.
-
-</details>
-
-### 5. Create a `customer__daily` model
-
-Because customers regularly change their addresses, our support team want to know what address a customer had in a system on a given day.
-
-First, create a calendar spine using the dbt-utils package.
-
-Then, create a model called `customer__daily` that uses our snapshot data and the calendar spine to have a record of what a customer looked like on each day since they were created.
-
-**N.B.**: For the purposes of this exercise, given we don't have our own snapshot data, please use the following table for the snapshot data: `analytics.snapshots_prod.customers_snapshot`.
-
-<details>
-  <summary>👉 Section 5</summary>
-
-  (1) Create a `packages.yml` file in the root directory of your project. Add the following code to it to add the `dbt_utils` package:
-  ```yaml
-  packages:
-    - package: fishtown-analytics/dbt_utils
-      version: 0.6.4
-  ```
-  Make sure you run `dbt deps` so that this package is imported into your project.
-
-  (2) Create a new model called `calendar.sql`. Add the following code to it to generate a calendar spine:
-  ```sql
-  {{ dbt_utils.date_spine(
-      datepart="day",
-      start_date="to_date('01/01/2020', 'mm/dd/yyyy')",
-      end_date="current_date"
-    )
-  }}
-  ```
-  (3) Create a new model called `customer__daily.sql`. Add the following SQL:
-  ```sql
-  with calendar as (
-
-      select *
-      from {{ ref('calendar') }}
-
-  ), customers as (
-
-      select *
-      from analytics.snapshots_prod.customers_snapshot
-
-  ), joined as (
-
-      select
-          calendar.date_day,
-          customers.*
-      from calendar
-      inner join customers
-          on calendar.date_day < coalesce(customers._dbt_valid_to, '2099-01-01')
-          and calendar.date_day >= customers._dbt_valid_from
-
-  )
-
-  select *
-  from joined
-  ```
-  (4) Execute `dbt run -m +customer__daily` to make sure your models run successfully.
-</details>
-
-### 6. Write a query that shows rolling 7-day order volumes
-
-You've had a request from the CEO to create a dashboard with the rolling 7-day order amounts. Because some days don't have orders, you think you'll need to use a calendar spine to create it.
-
-Write a query that shows the number of orders on a rolling 7-day basis.
-
-<details>
-  <summary>👉 Section 6</summary>
-
-  (1) Write a SQL query that joins our `orders` and `calendar` models. The join should work in a such a way that the prior 7 days of orders get joined to a given `date_day` in the `calendar` model. That way, you can then aggregate this joined query, grouping by the `date_day` column, in order to count how many orders there were on a rolling 7 day basis.
+  (2) Execute `dbt seed` in the console at the bottom of your screen to make sure your seed uploads correctly.
+  (3) You can now reference that data as `{{ ref('stores_data') }}`. Add code in your `orders` model that adds a `store_name` column.
+  (4) Execute `dbt run -m orders` to make sure your updates run successfully.
 </details>
 
 ## Links and Walkthrough Guides
 
 The following links will be useful for these exercises:
 
-* [Snowflake Docs: Functions](https://docs.snowflake.com/en/sql-reference/functions-all.html)
-* [Snowflake Docs: Window Functions](https://docs.snowflake.com/en/sql-reference/functions-analytic.html)
-* [Snowflake Docs: Querying Semi-Structured Data](https://docs.snowflake.com/en/user-guide/querying-semistructured.html)
-* [dbt Docs: Packages](https://docs.getdbt.com/docs/building-a-dbt-project/package-management/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1CJCWaFTe0PHJ2K9ltryJdTmZB7k07cYTi4TJisu9LHw/edit?usp=sharing)
+* [dbt Docs: Snapshots](https://docs.getdbt.com/docs/building-a-dbt-project/snapshots/)
+* [dbt Docs: Jinja](https://docs.getdbt.com/docs/building-a-dbt-project/seeds/)
+* [Slides from presentation](https://docs.google.com/presentation/d/1akyr9HGINjg905y7WoyVGk4LPukUOnLq/edit#slide=id.p1)
