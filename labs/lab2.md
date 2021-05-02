@@ -12,40 +12,10 @@ We've got two models, `orders` and `customers`. Each should have a primary key. 
 Things to think about:
 * If the tests fail, is there a problem with our query?
 
-### 2. Add columns to your customers table that contain how many orders the customer had in the last 30, 90 and 360 days.
-
-More work for our retention team. They want to easily be able to see how order patterns affect customer behaviour. They want to be able to easily write a query that would tell them how many customers have more than 5 orders in the last 30 days.
-
-Things to think about:
-* Are there ways that Jinja could be helpful here?
-
-### 3. Add a test to ensure all the delivery time columns are greater than zero (if not null)
-
-In the last lab, we added two columns to each of the `orders` and `customers` tables. In theory, when populated, they should always be greater than zero. We'll need to write a custom schema test that ensures that's always the case.
-
-### 4. Add a test to ensure that the number of orders in the last 90 days from our `customers` table doesn't exceed the total number of orders in our `orders` table.
-
-Having added the new columns in step 2, we want to double-check that the sum of the column on the `customers` model doesn't exceed the total number of orders in our `orders` model.
-
-Given the specificity of this test, we likely don't want to write a custom schema test. Could we use a data test to do it?
-
-## Links and Walkthrough Guides
-
-The following links will be useful for these exercises:
-
-* [dbt Docs: Testing](https://docs.getdbt.com/docs/building-a-dbt-project/tests)
-* [dbt Docs: Jinja](https://docs.getdbt.com/docs/building-a-dbt-project/jinja-macros/)
-* [dbt Docs: Custom Schema Docs](https://docs.getdbt.com/docs/guides/writing-custom-schema-tests/)
-* [dbt Docs: Data Tests](https://docs.getdbt.com/docs/building-a-dbt-project/tests/#data-tests)
-* [Jinja Template Designer Docs](https://jinja.palletsprojects.com/en/2.11.x/templates/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1SOpYdmgagY36cT7kL3A7Sc0ti5EWMmX4xX6PNvkJoaY/edit?usp=sharing)
-
-Click on the links below for step-by-step guides to each section above.
-
 <details>
   <summary>👉 Section 1</summary>
-  
-  (1) Add `unique` and `not_null` tests to the `schema.yml` files. For the `orders` table, it will containt the following information: 
+
+  (1) Add `unique` and `not_null` tests to the `schema.yml` files. For the `orders` table, it will containt the following information:
   ```yml
     - name: orders
       columns:
@@ -53,13 +23,20 @@ Click on the links below for step-by-step guides to each section above.
           tests:
             - unique
             - not_null
-  ``` 
+  ```
   (2) Execute `dbt test` in the console at the bottom of your screen to make sure all the tests pass.
 </details>
 
+### 2. Add columns to your customers table that contain how many orders the customer had in the last 30, 90 and 360 days.
+
+More work for our retention team. They want to easily be able to see how order patterns affect customer behaviour. They want to be able to easily write a query that would tell them how many customers have more than 5 orders in the last 30 days.
+
+Things to think about:
+* Are there ways that Jinja could be helpful here?
+
 <details>
   <summary>👉 Section 2</summary>
-  
+
   (1) Given the SQL for the three columns will be _almost_ identical, we could use a Jinja `for` loop here. Add the following SQL to your `customer_metrics` CTE:
   ```sql
     {% for days in [30,90,360] %}
@@ -71,9 +48,13 @@ Click on the links below for step-by-step guides to each section above.
   (3) Execute `dbt run` in the console at the bottom of your screen to make sure everything runs successfully.
 </details>
 
+### 3. Add a test to ensure all the delivery time columns are greater than zero (if not null)
+
+In the last lab, we added two columns to each of the `orders` and `customers` tables. In theory, when populated, they should always be greater than zero. We'll need to write a custom schema test that ensures that's always the case.
+
 <details>
   <summary>👉 Section 3</summary>
-  
+
   (1) Given this feels like a test that will be broadly re-usable, we'll likely want to create a custom schema test. Create a new file in the `macros/` directory called `test_greater_than_zero.sql` that contains the following code:
   ```sql
     {% macro test_greater_than_zero(model) %}
@@ -97,9 +78,15 @@ Click on the links below for step-by-step guides to each section above.
   (3) Execute `dbt test` in the console at the bottom of your screen to make sure all the tests pass.
 </details>
 
+### 4. Add a test to ensure that the number of orders in the last 90 days from our `customers` table doesn't exceed the total number of orders in our `orders` table.
+
+Having added the new columns in step 2, we want to double-check that the sum of the column on the `customers` model doesn't exceed the total number of orders in our `orders` model.
+
+Given the specificity of this test, we likely don't want to write a custom schema test. Could we use a data test to do it?
+
 <details>
   <summary>👉 Section 4</summary>
-  
+
   (1) Create a new file in the `tests/` directory called `count_orders_check.sql` that contains the following SQL:
   ```sql
     with orders as (
@@ -126,3 +113,16 @@ Click on the links below for step-by-step guides to each section above.
   ```
   (2) Execute `dbt test` in the console at the bottom of your screen to make sure all the tests pass.
 </details>
+
+## Links and Walkthrough Guides
+
+The following links will be useful for these exercises:
+
+* [dbt Docs: Testing](https://docs.getdbt.com/docs/building-a-dbt-project/tests)
+* [dbt Docs: Jinja](https://docs.getdbt.com/docs/building-a-dbt-project/jinja-macros/)
+* [dbt Docs: Custom Schema Docs](https://docs.getdbt.com/docs/guides/writing-custom-schema-tests/)
+* [dbt Docs: Data Tests](https://docs.getdbt.com/docs/building-a-dbt-project/tests/#data-tests)
+* [Jinja Template Designer Docs](https://jinja.palletsprojects.com/en/2.11.x/templates/)
+* [Slides from presentation](https://docs.google.com/presentation/d/1SOpYdmgagY36cT7kL3A7Sc0ti5EWMmX4xX6PNvkJoaY/edit?usp=sharing)
+
+Click on the links below for step-by-step guides to each section above.
