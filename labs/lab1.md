@@ -1,4 +1,4 @@
-## Lab 1: Runs, Sources and Docs
+## Lab 1: Models, Sources and Docs
 
 ### 1. Re-factor your current model by creating two new staging models
 
@@ -226,4 +226,4 @@ The following links will be useful for these exercises:
 
 * [dbt Docs: Sources](https://docs.getdbt.com/docs/building-a-dbt-project/using-sources/)
 * [dbt Docs: Documenting Models and Sources](https://docs.getdbt.com/docs/building-a-dbt-project/documentation/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1U7gxRwIEM5RC6r-v4UPBv-fqKI4tgBSfCAhku5Iqndw/edit?usp=sharing)
+* [Slides from presentation](https://docs.google.com/presentation/d/1_3CwyjrPhqmhJ98XWM_gYVVjJq6tOCbr/edit#slide=id.p1)
