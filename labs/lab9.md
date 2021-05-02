@@ -66,4 +66,4 @@ The following links will be useful for these exercises:
 
 * [dbt Docs: Configuring Incremental Models](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/configuring-incremental-models/)
 * [dbt Discourse: On the limits of incrementality](https://discourse.getdbt.com/t/on-the-limits-of-incrementality/303)
-* [Slides from presentation](https://docs.google.com/presentation/d/1X2RDZ0V2x7GtMwfB-4uPh0p366vEWABhWYVJoMNn1wo/edit)
+* [Slides from presentation](https://docs.google.com/presentation/d/1Sotsxwk59aiahopEzji-n5CpB-MG5_lw/edit#slide=id.p1)

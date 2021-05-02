@@ -123,4 +123,4 @@ The following links will be useful for these exercises:
 * [dbt Docs: Custom Schema Docs](https://docs.getdbt.com/docs/guides/writing-custom-schema-tests/)
 * [dbt Docs: Data Tests](https://docs.getdbt.com/docs/building-a-dbt-project/tests/#data-tests)
 * [Jinja Template Designer Docs](https://jinja.palletsprojects.com/en/2.11.x/templates/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1SOpYdmgagY36cT7kL3A7Sc0ti5EWMmX4xX6PNvkJoaY/edit?usp=sharing)
+* [Slides from presentation](https://docs.google.com/presentation/d/17vd-U6U-AtaaoQ5-EDvcaMck3hRr-1A3/edit#slide=id.p1)
