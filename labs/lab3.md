@@ -1,113 +1,109 @@
-## Lab 3: Snapshots and Seeds
+## Lab 3. CTEs, Subqueries, and Query Optimization
 
-### Kick-off discussion
+### 1. Re-write the query using CTEs
 
-* Are there any tables at USAA that would benefit from being snapshotted?
-* Are there any instances where having a snapshot table would have solved a problem at USAA?
-* Share some of your best `case when` horror stories.
-* Are there any at USAA that would benefit from a seed file?
+You received a query from a collague in the marketing department who was trying to pull some information from your warehouse. Unfortunately, they exclusively used subqueries and you want to clean it up before providing your feedback because you think it will be easier to read.
 
-### 1. Snapshot the customers table
+Create a new file for the following query and re-write it using CTEs instead of subqueries.
 
-Our application doesn't keep track of changes to any of the tables. When a record is updated, the prior state is lost as far as the application is concerned. From an analytics point of view, the full history would be really beneficial.
-
-Set up a snapshot model on the `customers` source table (not the model).
-
-Things to think about:
-* What type of snapshot strategy is best for this table?
-* What database and schema should it get built in?
-
+```sql
+select
+    customer_id,
+    first_name,
+    last_name,
+    (select round(avg(total_amount),2) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as avg_order_amount,
+    (select count(*) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as order_count
+from {{ ref('customers') }}
+where customer_id in (
+  select distinct customer_id
+  from {{ ref('orders') }}
+  where ordered_at > current_date - 42
+)
+```
 <details>
   <summary>👉 Section 1</summary>
 
-  (1) Create a file in the `snapshots/` directory called `customers_snapshot.sql` that contains the following code:
+  (1) Create a file in the `models/` directory called `rpt_7_week_active_customers.sql` and put the query above in it.
+  (2) There are two bits that we feel we could re-factor into CTEs. The first is the subquery in the `where` clause. We can also join it instead of doing a `where customer_id in`. We can pull this out so that our file looks as follows:
   ```sql
-    {% snapshot customers_snapshot %}
+  with seven_weeks as (
 
-    {{
-        config(
-        target_database='analytics',
-        target_schema='snapshots_initials',
-        unique_key='id',
+    select distinct customer_id
+    from {{ ref('orders') }}
+    where ordered_at > current_date - 42
 
-        strategy='check',
-        check_cols = 'all',
-        )
-    }}
+  )
 
-    select * from {{ source('ecomm', 'customers') }}
-
-    {% endsnapshot %}
+  select
+      customer_id,
+      first_name,
+      last_name,
+      (select round(avg(total_amount),2) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as avg_order_amount,
+      (select count(*) from {{ ref('orders') }} where orders.customer_id = customers.customer_id and ordered_at > current_date - 180) as order_count
+  from {{ ref('customers') }}
+  inner join seven_weeks
+    using (customer_id)
   ```
-  (2) Execute `dbt snapshot` in the console at the bottom of your screen to make sure your snapshot run correctly.
+  (3) The second section we can pull out is the two metric columns that are calculated with subqueries. These can be done an aggregate and a join. It would leave our file as follows:
+  ```sql
+  with seven_weeks as (
+
+    select distinct customer_id
+    from {{ ref('orders') }}
+    where ordered_at > current_date - 42
+
+  ), half_year as (
+
+    select
+        customer_id,
+        round(avg(total_amount),2) as avg_order_amount,
+        count(*) as order_count
+    from {{ ref('orders') }}
+    where ordered_at > current_date - 180
+    group by 1
+
+  )
+
+  select
+      customers.customer_id,
+      customers.first_name,
+      customers.last_name,
+      half_year.avg_order_amount,
+      half_year.order_count
+  from {{ ref('customers') }}
+  left join half_year
+    using (customer_id)
+  inner join seven_weeks
+    using (customer_id)
+  ```
+  (3) Execute `dbt run -m +rpt_7_week_active_customers` to make sure your model runs successfully.
 </details>
 
-### 2. Snapshot the orders table
+### 2. Break out the query into ephemeral models.
 
-Similarly, we want a snapshot of the `orders` source table. Set another snapshot up for that table.
+After reviewing the query, you think it would be useful to add it to your dbt project. However, you think part of the query is going to be re-usable elsewhere and want to break it up.
+
+Move part of the query into another model. You won't want the new model to appear in the warehouse, so set it to be materialized as ephemeral.
 
 Things to think about:
-* What type of snapshot strategy is best for this table?
-* Should this snapshot get built in the same database and schema as the other snapshot?
+* What section of the query is most suitable to be split out?
+* Are there any tests you should apply to the new ephemeral model?
 
 <details>
   <summary>👉 Section 2</summary>
 
-  (1) Create a file in the `snapshots/` directory called `order_snapshot.sql` that contains the following code:
-  ```sql
-    {% snapshot orders_snapshot %}
+  (1) Create two new `.sql` files for the CTEs and move the SQL from the CTEs across into them.
 
-    {{
-        config(
-        target_database='analytics',
-        target_schema='snapshots_initials',
-        unique_key='id',
+  (2) Re-factor the initial file by replacing the code in the CTEs with `select *` queries from the new models.
 
-        strategy='timestamp',
-        updated_at='_synced_at',
-        )
-    }}
+  (3) Add a config to the two new models so that they get `materialized` as `ephemeral`.
 
-    select * from {{ source('ecomm', 'orders') }}
-
-    {% endsnapshot %}
-  ```
-  (2) Execute `dbt snapshot` in the console at the bottom of your screen to make sure your snapshots run correctly.
-</details>
-
-### 3. Add the stores seed file to our project
-
-There's a `store_id` column on the `orders` table that we haven't leveraged yet. It looks like it _should_ join to a stores table, but it doesn't seem to exist in our application database.
-
-It turns out, the engineers haven't yet built that table.
-
-Create a seed file with the store IDs and names. Add a number column to our `orders` model called `store_name`.
-
-The store mappings are as follows:
-
-* Store ID 1: New York
-* Store ID 2: Los Angeles
-* Store ID 3: Dallas
-
-<details>
-  <summary>👉 Section 3</summary>
-
-  (1) Create a file in the `data/` directory called `stores_data.csv` that contains the following data:
-  ```csv
-    store_id,store_name
-    1,New York
-    2,London
-    3,Tokyo
-  ```
-  (2) Execute `dbt seed` in the console at the bottom of your screen to make sure your seed uploads correctly.
-  (3) You can now reference that data as `{{ ref('stores_data') }}`. Add code in your `orders` model that adds a `store_name` column.
-  (4) Execute `dbt run -m orders` to make sure your updates run successfully.
+  (4) Execute `dbt run -m +rpt_7_week_active_customers` to make sure your model runs successfully.
 </details>
 
 ## Links and Walkthrough Guides
 
 The following links will be useful for these exercises:
 
-* [dbt Docs: Snapshots](https://docs.getdbt.com/docs/building-a-dbt-project/snapshots/)
-* [dbt Docs: Jinja](https://docs.getdbt.com/docs/building-a-dbt-project/seeds/)
-* [Slides from presentation](https://docs.google.com/presentation/d/1swZm383DK1Xdg86aUC8FpSEu6bqYkw86of6oCmqnFCQ/edit?usp=sharing)
+* [dbt Docs: Ephemeral materialization](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/materializations/#ephemeral)
+* [Slides from presentation](https://docs.google.com/presentation/u/2/d/1GGV6EK75ofAcBOBubdaFpcJYStH8NAl9/edit#slide=id.p1)
