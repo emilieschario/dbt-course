@@ -8,27 +8,62 @@
 
 ### 1. Run the orders model with a larger warehouse.
 
-Despite making the `orders` model, it's still taking too long to build. Add a configuration to the orders model that has it run with the larger `compute_wh_xl` warehouse.
+Despite making the `orders` model incremental, it's still taking too long to build. Add a configuration to the orders model that has it run with the larger `COMPUTE_WH_M` warehouse.
 
 Things to think about:
 * How do you verify that it's actually building with the new warehouse setting?
 
-### 2. Write a macro to clone your production environment
+<details>
+  <summary>👉 Section 1</summary>
 
-This step assumes you ran a successful production run in lab 7. If you did not, go and do so now.
+  (1) Change the config in our orders model by adding the following:
+  ```
+  snowflake_warehouse= "COMPUTE_WH_M"
+  ```
+  (2) Execute `dbt run -m orders`. Can you see your query in the Snowflake query history with the larger warehouse?
 
-As a result of increasing run times in development, we want to set up a way for developers to clone the production schema into their own schema when they start developing.
+</details>
 
-Write a macro to clone your production environment into your target environment.
-
-### 3. Add query tags to all dbt models
+### 2. Add query tags to all dbt models
 
 Because dbt queries can come from a long-list of users (all of you), we want to add a query tag 'dbt_run' to all queries executed by dbt.
 
 Add the query tag to your project and then verify that it's working.
 
-### 4. Add a `cluster_by` config to the orders model
+<details>
+  <summary>👉 Section 2</summary>
+
+  (1) To add this config to all our mdoels, we'll want to make the change in our dbt_project.yml file. We need it to be under the `models/` key:
+  ```yml
+  models:
+    +query_tag: 'dbt_run'
+  ```
+  (2) Execute `dbt run`. Can you see the query tags in Snowflake?
+
+</details>
+
+
+### 3. Add a `cluster_by` config to the orders model
 
 While our orders model now builds quickly, it's still very slow to query.
 
 Add a `cluster_by` config to the `orders` model, based on what you think the most common query pattern will be.
+
+<details>
+  <summary>👉 Section 3</summary>
+
+  (1) I'm going to assume that filtering by the `ordered_at` is going to be the most common query pattern. We're therefore going to cluster by that column, by adding the following line to the config in the `orders` model:
+  ```
+  cluster_by=['ordered_at']
+  ```
+  (2) Execute `dbt run -m orders` to make sure everything works correctly. Can you see the 'cluster by' section of the logs?
+
+</details>
+
+## Links and Walkthrough Guides
+
+The following links will be useful for these exercises:
+
+* [dbt Docs: Configuring Incremental Models](https://docs.getdbt.com/docs/building-a-dbt-project/building-models/configuring-incremental-models/)
+* [dbt Discourse: On the limits of incrementality](https://discourse.getdbt.com/t/on-the-limits-of-incrementality/303)
+* [Slides from presentation](https://docs.google.com/presentation/d/1X2RDZ0V2x7GtMwfB-4uPh0p366vEWABhWYVJoMNn1wo/edit)
