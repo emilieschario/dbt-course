@@ -1,6 +1,6 @@
 ## Pre-Course Work for 'Data Engineering with dbt'
 
-The goal of this pre-work is to get each student set up in Snowflake and dbt Cloud, as well as create the beginnings of the dbt project that we will develop over the course. 
+The goal of this pre-work is to get each student set up in Snowflake and dbt Cloud, as well as create the beginnings of the dbt project that we will develop over the course.
 
 If at any point you have any questions or something doesn't appear to be working as you'd expect, please reply to the introduction email and I'll make sure we get it all sorted out.
 
@@ -40,23 +40,23 @@ For the purposes of the course, you'll be creating your own dbt Cloud project. T
     - Auth Method: Username & Password
     - Username: Your Snowflake username
     - Password: Your Snowflake password
-    - Schema: dbt_(first initial)(last name), i.e. for Dylan Baker it would be dbt_dbaker
+    - Schema: dbt_(first initial)(last name), i.e. for Emilie Schario it would be dbt_eschario
     - Target: dev
     - Threads: 2
 8. Click 'Test'. If you the tests pass, click 'Continue'. If the tests fail, return to the prior two steps and make sure all the details are entered correctly.
 9. On the repository page, add a repository from 'Managed'. This will prompt dbt Cloud to create a git repository for you.
-10. Name the repository 'dbt_training_(firstinitial)(lastname)' and click 'Create'. For Dylan Baker, this would be 'dbt_training_dbaker'. You should receive a success message on the page. Click 'Continue'.
+10. Name the repository 'dbt_training_(firstinitial)(lastname)' and click 'Create'. For Emilie Schario, this would be 'dbt_training_eschario'. You should receive a success message on the page. Click 'Continue'.
 11. You'll be prompted to invite users. Click 'Skip & Complete' at the top of the page.
 
 ### 4. Initialize your dbt project
 
-After configuring the previous steps, you should be braught back to the main page. You should be prompted to 'Start Developing'. Click that button. If you do not see the button, click on the menu in the top left and select 'Develop'. Once you're brought to the IDE, it will take a second to set everything up. 
+After configuring the previous steps, you should be braught back to the main page. You should be prompted to 'Start Developing'. Click that button. If you do not see the button, click on the menu in the top left and select 'Develop'. Once you're brought to the IDE, it will take a second to set everything up.
 
-There will be a big green button in the top left corner that says 'initialize your project'. Click that button. dbt Cloud will then create a template dbt Project for you to start developing. 
+There will be a big green button in the top left corner that says 'initialize your project'. Click that button. dbt Cloud will then create a template dbt Project for you to start developing.
 
 To test that everything is set up properly, we're going to try building some dbt models. There are two example models in the project by default.
 
-Type in 'dbt run' in the bar at the bottom of your screen (if it isn't already there by default) and click enter. You should see two models, `my_first_dbt_model` and `my_second_dbt_model`, complete successfully. 
+Type in 'dbt run' in the bar at the bottom of your screen (if it isn't already there by default) and click enter. You should see two models, `my_first_dbt_model` and `my_second_dbt_model`, complete successfully.
 
 Congratulations! You've just run dbt for the first time in your new project.
 
@@ -65,10 +65,10 @@ Congratulations! You've just run dbt for the first time in your new project.
 The final step is to create your first dbt model. We're going to create a basic `customers` model, with data from our customers and orders data. To do so, complete the following steps:
 
 1. Hover over the 'models' directory in the file navigator to the left of the screen. Three dots will appear. Click on the dots and select new file.
-2. A dialog box will appear at the top of the screen. We want to create a file called `customers.sql` in the `models` directory. You should input `models/customers.sql` and click 'OK'. 
-3. There will now be a file in the `models` directory called `customers`. Click on it. The file will be blank. Paste into that file the SQL from the bottom of this file. 
+2. A dialog box will appear at the top of the screen. We want to create a file called `customers.sql` in the `models` directory. You should input `models/customers.sql` and click 'OK'.
+3. There will now be a file in the `models` directory called `customers`. Click on it. The file will be blank. Paste into that file the SQL from the bottom of this file.
 4. Once pasted, click 'Run SQL' in the top left to see the results of the query. Click 'Save' in the top right corner to save the file.
-5. Finally, we want to build this model as an object in our database. Once again, enter `run dbt` at the bottom of the page and click enter. You should now see your new `customers` model build, in addition to the two example models that came with the project. 
+5. Finally, we want to build this model as an object in our database. Once again, enter `run dbt` at the bottom of the page and click enter. You should now see your new `customers` model build, in addition to the two example models that came with the project.
 
 You've now written your first dbt model and have completed the pre-course requirements. I'm looking forward to teaching all of you in the coming week!
 
@@ -80,10 +80,10 @@ with orders as (
         customer_id,
         created_at as ordered_at
     from raw.ecomm.orders
-        
+
 ), customers as (
 
-    select 
+    select
         id as customer_id,
         first_name,
         last_name,
@@ -104,7 +104,7 @@ with orders as (
 
 ), joined as (
 
-    select 
+    select
         customers.*,
         coalesce(customer_metrics.count_orders,0) as count_orders,
         customer_metrics.first_order_at,
