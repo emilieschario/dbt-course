@@ -13,8 +13,8 @@ with base as (
         address,
         phone_number,
         created_at,
-        _dbt_valid_from,
-        _dbt_valid_to
+        dbt_valid_from,
+        dbt_valid_to
     from base
 
 )
