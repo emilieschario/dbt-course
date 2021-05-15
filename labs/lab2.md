@@ -5,6 +5,10 @@
 1. What are instances where more testing would have been useful at USAA? What was the issue? What test would you have added?
 2. What are some examples of SQL that you've written recently that might benefit from using Jinja?
 
+### 0. Delete the example folder.
+
+When setting up your project, an example folder was created with models and tests. If you haven't already, please delete it now or it will pose problems during this lab.
+
 ### 1. Make sure our models have primary keys
 
 We've got two models, `orders` and `customers`. Each should have a primary key. We want to make sure that the primary keys are unique and not null.
