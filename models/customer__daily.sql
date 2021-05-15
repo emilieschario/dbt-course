@@ -15,8 +15,8 @@ with calendar as (
         customers.*
     from calendar
     inner join customers
-        on calendar.date_day < coalesce(customers._dbt_valid_to, '2099-01-01')
-        and calendar.date_day >= customers._dbt_valid_from
+        on calendar.date_day < coalesce(customers.dbt_valid_to, '2099-01-01')
+        and calendar.date_day >= customers.dbt_valid_from
 
 )
 
