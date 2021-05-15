@@ -2,7 +2,7 @@
 
 ### 1. Re-factor your current model by creating two new staging models
 
-So far, we've created one model. That model references two raw tables from our warehouse and 'cleans' up some of that data. Create two new models, `stg_ecomm__orders` and `stg_ecomm__customers`, that do that clean-up. Then, re-factor our existing model to reference those staging models.
+So far, we've created one model. That model references two raw tables from our warehouse and 'cleans' up some of that data. Create two new models, `stg_ecomm__orders` and `stg_ecomm__customers`, that do that clean-up. Then, re-factor our existing model to reference those staging models. If you did not create an order model already, you will need to create one. 
 
 <details>
   <summary>👉 Section 1</summary>
@@ -125,7 +125,7 @@ A new table has arrived in our warehouse, `deliveries`. The `deliveries` table l
 | 2  | 2        | 2020-01-01 08:57 | 2020-01-01 09:10 | delivered | 2020-06-01 12:13 |
 | 3  | 3        | 2020-01-01 09:01 |                  | cancelled | 2020-06-01 12:13 |
 
-We want to add this table as a source to our project.
+We want to add this table as a source to our project. 
 
 <details>
   <summary>👉 Section 4</summary>
