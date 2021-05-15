@@ -27,11 +27,11 @@ That filter should fix the customers data, but we still need to add a filter to 
 <details>
   <summary>👉 Section 2</summary>
 
-  (1) As discussed in the session, there are a number of different ways we could do this filter. In this instance we'll use an `ilike`. Add the following filter to your customers model:
+  (1) As discussed in the session, there are a number of different ways we could do this filter. In this instance we'll use `endswith`. Add the following filter to your customers model:
   ```sql
-    where email not ilike '%ecommerce.com'
-      and email not ilike '%ecommerce.ca'
-      and email not ilike '%ecommerce.co.uk'
+    where endswith(email,'ecommerce.com')
+      and endswith(email,'ecommerce.ca')
+      and endswith(email,'ecommerce.co.uk')
   ```
   (2) Add the same filter to your `orders` model. Note that the `email` column isn't likely to already be there so you might need to join it in.
   (3) Execute `dbt run` to make sure your filters work.
@@ -63,11 +63,11 @@ Things to think about:
 
   (3) Pull out the necessary columns from the JSON. Write a query around the following column definitions:
   ```sql
-    json_data:order_id as order_id,
-    json_data:id as payment_id,
-    json_data:method as payment_type,
-    json_data:amount::int / 100.0 as payment_amount,
-    json_data:created_at::timestamp as created_at
+    json_data['order_id'] as order_id,
+    json_data['id'] as payment_id,
+    json_data['method'] as payment_type,
+    json_data['amount']::int / 100.0 as payment_amount,
+    json_data['created_at']::timestamp as created_at
   ```
 
   (4) Execute `dbt run -m stg_stripe__payments` to make sure everything is working correctly.
