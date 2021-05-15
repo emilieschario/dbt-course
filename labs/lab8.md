@@ -9,7 +9,7 @@ Make the orders model incremental, without a primary key and without a lookback 
 <details>
   <summary>👉 Section 1</summary>
 
-  (1) In our orders model, find the CTE where we select from the orders staging model. In the CTE, add the `is_incremental()` filter:
+  (1) In our orders model, find the CTE where we select from the orders staging model. Why do we add the filter in this CTE? In the CTE, add the `is_incremental()` filter:
   ```sql
   {% if is_incremental() %}
   where ordered_at > (select max(ordered_at) from {{ this }})
