@@ -2,7 +2,7 @@
 
 ## Kick-off Discussion Questions
 
-1. What are instances where more testing would have been useful at USAA? What was the issue? What test would you have added?
+1. What are instances where more testing would have been useful at your company? What was the issue? What test would you have added?
 2. What are some examples of SQL that you've written recently that might benefit from using Jinja?
 
 ### 0. Delete the example folder.
