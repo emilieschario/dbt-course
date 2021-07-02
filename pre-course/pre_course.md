@@ -118,3 +118,32 @@ with orders as (
 select *
 from joined
 ```
+
+### BONUS!!
+
+For our first lab tomorrow, you will also need an orders model. Feel free to challenge yourself to set it up. 
+If not, you'll have to do this at the top of lab 1. 
+
+```
+with orders as (
+
+    select *
+    from raw.ecomm.orders
+
+), deliveries as (
+
+    select *
+    from raw.ecomm.customers
+
+), joined as (
+
+    select *
+    from orders
+    left join deliveries
+        using (order_id)
+
+)
+
+select *
+from joined
+```
