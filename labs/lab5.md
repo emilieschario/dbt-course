@@ -2,10 +2,10 @@
 
 ### Kick-off discussion
 
-* Are there any tables at USAA that would benefit from being snapshotted?
-* Are there any instances where having a snapshot table would have solved a problem at USAA?
+* Are there any tables at your company that would benefit from being snapshotted?
+* Are there any instances where having a snapshot table would have solved a problem at your company?
 * Share some of your best `case when` horror stories.
-* Are there any at USAA that would benefit from a seed file?
+* Are there any at your company that would benefit from a seed file?
 
 ### 1. Snapshot the customers table
 
