@@ -1,8 +1,8 @@
 ## Lab 9: Snowflake Specifics in dbt
 
 ### Kick-Off Discussion
-* How much of what we just discussed is already in place at USAA?
-* How much of what we just discussed would be useful to implement at USAA?
+* How much of what we just discussed is already in place at your company?
+* How much of what we just discussed would be useful to implement at your company?
 * What would be the right fields to cluster by in the `customers` model?
 * What would be the right fields to cluster by in the `orders` model?
 
