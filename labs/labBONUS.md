@@ -2,7 +2,7 @@
 
 ### Kick-off questions
 
-* What semi-structured data exists within USAA?
+* What semi-structured data exists within your company?
 * How is that data being transformed currently?
 
 ### 1. Create a staging model for the payments data
