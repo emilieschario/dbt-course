@@ -122,7 +122,8 @@ from joined
 ### BONUS!!
 
 For our first lab tomorrow, you will also need an orders model. Feel free to challenge yourself to set it up. 
-If not, you'll have to do this at the top of lab 1. 
+You will need to edit this code to make it work! If not, you'll have to do this at the top of lab 1. 
+Happy editing!
 
 ```
 with orders as (
