@@ -20,6 +20,23 @@ Resources:
 * Slides (fork and customize): https://drive.google.com/drive/u/2/folders/108mL79AFA3OubeA7JAzBa4XpTZtQBzTG 
    * You'll need to adjust away any client references and make sure the links on the slides go to the relevant places for the course you are teaching.
 
+Short term to-dos:
+- [ ] Upgrade course and all material to dbt 1.0
+- [ ] Lab 1 changes:
+   - [ ] Section 5-2 update models
+   - [ ] List of existing files at the end of the lab as a "hint"
+   - [ ] make clearer that you're not expected to create a `deliveries.sql` file
+   - [ ] Section 5 `_synced_at` error
+   - [ ] Fix branch with results
+- [ ] Module 2, Slide 8, Fix missing "Group by"
+- [ ] Lab 4 changes:
+   - [ ] Not `endswith`
+   - [ ] dbt valid section 5 leading underscore
+- [ ] Lab 5: Emphasize snapshot initials
+- [ ] Update window function slides to use qualify example
+
+
+Canonical list:
 - [ ] Add users to roster sheet
 - [ ] Run grant statements and update data
    - [ ]  [Slab - Your Team's Long Term Memory](https://emilie.slab.com/posts/code-to-run-before-i672pvcx)
