@@ -16,6 +16,10 @@ Try running the following commands:
 
 ## Running a course:
 
+Resources: 
+* Slides (fork and customize): https://drive.google.com/drive/u/2/folders/108mL79AFA3OubeA7JAzBa4XpTZtQBzTG 
+   * You'll need to adjust away any client references and make sure the links on the slides go to the relevant places for the course you are teaching.
+
 - [ ] Add users to roster sheet
 - [ ] Run grant statements and update data
    - [ ]  [Slab - Your Team's Long Term Memory](https://emilie.slab.com/posts/code-to-run-before-i672pvcx)
